@@ -11,7 +11,6 @@ package ir;
 /* PROJECT IMPORTS */
 /*******************/
 import temp.*;
-import mips.*;
 
 public class IrCommandJumpIfEqToZero extends IrCommand
 {
@@ -24,11 +23,12 @@ public class IrCommandJumpIfEqToZero extends IrCommand
 		this.labelName = labelName;
 	}
 	
-	/***************/
-	/* MIPS me !!! */
-	/***************/
-	public void mipsMe()
+	public Temp getTemp() { return t; }
+	public String getLabelName() { return labelName; }
+	
+	@Override
+	public String toString()
 	{
-		MipsGenerator.getInstance().beqz(t, labelName);
+		return String.format("if Temp_%d == 0 goto %s", t.getSerialNumber(), labelName);
 	}
 }

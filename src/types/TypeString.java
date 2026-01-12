@@ -10,7 +10,7 @@ public class TypeString extends Type
 	/*****************************/
 	/* PREVENT INSTANTIATION ... */
 	/*****************************/
-	protected TypeString() {}
+	protected TypeString() { super("string"); }
 
 	/******************************/
 	/* GET SINGLETON INSTANCE ... */
@@ -20,8 +20,14 @@ public class TypeString extends Type
 		if (instance == null)
 		{
 			instance = new TypeString();
-			instance.name = "string";
 		}
 		return instance;
 	}
+
+	/*==================================================================*/
+    /*                    TYPE CHECKS                                   */
+    /*==================================================================*/
+	@Override
+	public boolean isString() { return true; }
+	
 }

@@ -1,48 +1,43 @@
 package ast;
 
+import types.*;
+import semantic.SemanticException;
 import temp.*;
 
 public class AstStmtCall extends AstStmt
 {
-	/****************/
-	/* DATA MEMBERS */
-	/****************/
 	public AstExpCall callExp;
 	
-	/******************/
-	/* CONSTRUCTOR(S) */
-	/******************/
 	public AstStmtCall(AstExpCall callExp)
 	{
-		/******************************/
-		/* SET A UNIQUE SERIAL NUMBER */
-		/******************************/
 		serialNumber = AstNodeSerialNumber.getFresh();
-
 		this.callExp = callExp;
 	}
 	
 	public void printMe()
 	{
-		callExp.printMe();
+		if (callExp != null) callExp.printMe();
 
-		/***************************************/
-		/* PRINT Node to AST GRAPHVIZ DOT file */
-		/***************************************/
-		AstGraphviz.getInstance().logNode(
-                serialNumber,
-			String.format("STMT\nCALL"));
-		
-		/****************************************/
-		/* PRINT Edges to AST GRAPHVIZ DOT file */
-		/****************************************/
-		AstGraphviz.getInstance().logEdge(serialNumber,callExp.serialNumber);
+		AstGraphviz.getInstance().logNode(serialNumber, "STMT\nCALL");
+		if (callExp != null) AstGraphviz.getInstance().logEdge(serialNumber, callExp.serialNumber);
 	}
 
+	@Override
+	public Type semantMe() throws SemanticException
+	{
+		// Just delegate to the call expression
+		if (callExp != null)
+			callExp.semantMe();
+		return null;
+	}
+
+	@Override
 	public Temp irMe()
 	{
-		if (callExp != null) callExp.irMe();
-
+		// Delegate to call expression (discard return value)
+		if (callExp != null) {
+			callExp.irMe();
+		}
 		return null;
 	}
 }

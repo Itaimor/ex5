@@ -1,94 +1,62 @@
 package ast;
 
 import types.*;
+import semantic.SemanticException;
+import temp.*;
+import ir.*;
 
 public class AstExpVarField extends AstExpVar
 {
 	public AstExpVar var;
 	public String fieldName;
 	
-	/******************/
-	/* CONSTRUCTOR(S) */
-	/******************/
 	public AstExpVarField(AstExpVar var, String fieldName)
 	{
-		/******************************/
-		/* SET A UNIQUE SERIAL NUMBER */
-		/******************************/
 		serialNumber = AstNodeSerialNumber.getFresh();
-
-		System.out.format("====================== var -> var DOT ID( %s )\n",fieldName);
 		this.var = var;
 		this.fieldName = fieldName;
 	}
 
-	/*************************************************/
-	/* The printing message for a field var AST node */
-	/*************************************************/
 	public void printMe()
 	{
-		/*********************************/
-		/* AST NODE TYPE = AST FIELD VAR */
-		/*********************************/
-		System.out.format("FIELD\nNAME\n(___.%s)\n",fieldName);
-
-		/**********************************************/
-		/* RECURSIVELY PRINT VAR, then FIELD NAME ... */
-		/**********************************************/
+		System.out.format("FIELD VAR: .%s\n", fieldName);
 		if (var != null) var.printMe();
 
-		/**********************************/
-		/* PRINT to AST GRAPHVIZ DOT file */
-		/**********************************/
-		AstGraphviz.getInstance().logNode(
-                serialNumber,
-			String.format("FIELD\nVAR\n___.%s",fieldName));
-
-		/****************************************/
-		/* PRINT Edges to AST GRAPHVIZ DOT file */
-		/****************************************/
-		if (var  != null) AstGraphviz.getInstance().logEdge(serialNumber,var.serialNumber);
+		AstGraphviz.getInstance().logNode(serialNumber,
+			String.format("FIELD\n.%s", fieldName));
+		if (var != null) AstGraphviz.getInstance().logEdge(serialNumber, var.serialNumber);
 	}
 
-	public Type semantMe()
+	@Override
+	public Type semantMe() throws SemanticException
 	{
-		Type t = null;
-		TypeClass tc = null;
+		// PDF 2.2: v.f - v must be class type, f must be member
+		Type varType = var.semantMe();
+
+		if (!varType.isClass())
+			throw new SemanticException(lineNumber, "field access on non-class type");
+
+		TypeClass classType = (TypeClass) varType;
+		TypeClassVarDec member = classType.findMemberInHierarchy(fieldName);
+
+		if (member == null)
+			throw new SemanticException(lineNumber, "field '" + fieldName + "' not found in class");
+
+		return member.t;
+	}
+
+	@Override
+	public Temp irMe()
+	{
+		// Generate IR for base variable
+		//Temp baseTemp = var.irMe();
 		
-		/******************************/
-		/* [1] Recursively semant var */
-		/******************************/
-		if (var != null) t = var.semantMe();
+		// Calculate field offset from class type
+		// For now, we'll use a simplified approach - load field symbolically
+		Temp result = TempFactory.getInstance().getFreshTemp();
+		String fieldAccess = String.format("field_%s", fieldName);
+		Ir.getInstance().AddIrCommand(new IrCommandLoad(result, fieldAccess));
 		
-		/*********************************/
-		/* [2] Make sure type is a class */
-		/*********************************/
-		if (t.isClass() == false)
-		{
-			System.out.format(">> ERROR [%d:%d] access %s field of a non-class variable\n",6,6,fieldName);
-			System.exit(0);
-		}
-		else
-		{
-			tc = (TypeClass) t;
-		}
-		
-		/************************************/
-		/* [3] Look for fiedlName inside tc */
-		/************************************/
-		for (TypeList it = tc.dataMembers; it != null; it=it.tail)
-		{
-			if (it.head.name == fieldName)
-			{
-				return it.head;
-			}
-		}
-		
-		/*********************************************/
-		/* [4] fieldName does not exist in class var */
-		/*********************************************/
-		System.out.format(">> ERROR [%d:%d] field %s does not exist in class\n",6,6,fieldName);							
-		System.exit(0);
-		return null;
+		return result;
 	}
 }

@@ -11,7 +11,6 @@ package ir;
 /* PROJECT IMPORTS */
 /*******************/
 import temp.*;
-import mips.*;
 
 public class IRcommandConstInt extends IrCommand
 {
@@ -24,11 +23,12 @@ public class IRcommandConstInt extends IrCommand
 		this.value = value;
 	}
 	
-	/***************/
-	/* MIPS me !!! */
-	/***************/
-	public void mipsMe()
+	public Temp getDst() { return t; }
+	public int getValue() { return value; }
+	
+	@Override
+	public String toString()
 	{
-		MipsGenerator.getInstance().li(t,value);
+		return String.format("Temp_%d := %d", t.getSerialNumber(), value);
 	}
 }

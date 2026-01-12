@@ -2,11 +2,28 @@ package types;
 
 public class TypeForScopeBoundaries extends Type
 {
-	/****************/
-	/* CTROR(S) ... */
-	/****************/
-	public TypeForScopeBoundaries(String name)
+	/**************************************/
+	/* USUAL SINGLETON IMPLEMENTATION ... */
+	/**************************************/
+	private static TypeForScopeBoundaries instance = null;
+
+	/*****************************/
+	/* PREVENT INSTANTIATION ... */
+	/*****************************/
+	private TypeForScopeBoundaries()
 	{
-		this.name = name;
+		super("SCOPE-BOUNDARY");
+	}
+
+	/******************************/
+	/* GET SINGLETON INSTANCE ... */
+	/******************************/
+	public static TypeForScopeBoundaries getInstance()
+	{
+		if (instance == null)
+		{
+			instance = new TypeForScopeBoundaries();
+		}
+		return instance;
 	}
 }

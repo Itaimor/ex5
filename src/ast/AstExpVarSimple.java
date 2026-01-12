@@ -2,8 +2,9 @@ package ast;
 
 import types.*;
 import symboltable.*;
-import ir.*;
+import semantic.SemanticException;
 import temp.*;
+import ir.*;
 
 public class AstExpVarSimple extends AstExpVar
 {
@@ -12,6 +13,19 @@ public class AstExpVarSimple extends AstExpVar
 	/************************/
 	public String name;
 	
+	/*****************************************************/
+	/* Symbol table entry (saved during semantic analysis) */
+	/*****************************************************/
+	private SymbolTableEntry entry;
+	
+	public String getUniqueName()
+	{
+		if (entry != null) {
+			return name + "_" + entry.getOffset();
+		}
+		return name;
+	}
+
 	/******************/
 	/* CONSTRUCTOR(S) */
 	/******************/
@@ -21,8 +35,6 @@ public class AstExpVarSimple extends AstExpVar
 		/* SET A UNIQUE SERIAL NUMBER */
 		/******************************/
 		serialNumber = AstNodeSerialNumber.getFresh();
-
-		System.out.format("====================== var -> ID( %s )\n",name);
 		this.name = name;
 	}
 
@@ -44,15 +56,24 @@ public class AstExpVarSimple extends AstExpVar
 			String.format("SIMPLE\nVAR\n(%s)",name));
 	}
 
-	public Type semantMe()
+	@Override
+	public Type semantMe() throws SemanticException
 	{
-		return SymbolTable.getInstance().find(name);
+		Type t = SymbolTable.getInstance().find(name);
+		if (t == null)
+			throw new SemanticException(lineNumber, "variable '" + name + "' is not declared");
+		
+		// Save entry for IR generation
+		entry = SymbolTable.getInstance().findEntry(name);
+		
+		return t;
 	}
 
+	@Override
 	public Temp irMe()
 	{
 		Temp t = TempFactory.getInstance().getFreshTemp();
-		Ir.getInstance().AddIrCommand(new IrCommandLoad(t,name));
+		Ir.getInstance().AddIrCommand(new IrCommandLoad(t, getUniqueName()));
 		return t;
 	}
 }

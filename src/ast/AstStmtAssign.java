@@ -1,6 +1,7 @@
 package ast;
 
 import types.*;
+import semantic.SemanticException;
 import temp.*;
 import ir.*;
 
@@ -21,11 +22,6 @@ public class AstStmtAssign extends AstStmt
 		/* SET A UNIQUE SERIAL NUMBER */
 		/******************************/
 		serialNumber = AstNodeSerialNumber.getFresh();
-
-		/***************************************/
-		/* PRINT CORRESPONDING DERIVATION RULE */
-		/***************************************/
-		System.out.print("====================== stmt -> var ASSIGN exp SEMICOLON\n");
 
 		/*******************************/
 		/* COPY INPUT DATA MENBERS ... */
@@ -64,28 +60,42 @@ public class AstStmtAssign extends AstStmt
 		AstGraphviz.getInstance().logEdge(serialNumber,exp.serialNumber);
 	}
 
-	public Type semantMe()
+	@Override
+	public Type semantMe() throws SemanticException
 	{
-		Type t1 = null;
-		Type t2 = null;
+		// PDF 2.4: x := e - type of e must be compatible with type of x
+		Type varType = var.semantMe();
+		Type expType = exp.semantMe();
 		
-		if (var != null) t1 = var.semantMe();
-		if (exp != null) t2 = exp.semantMe();
-		
-		if (t1 != t2)
-		{
-			System.out.format(">> ERROR [%d:%d] type mismatch for var := exp\n",6,6);				
-		}
+		if (!TypeUtils.canAssignTo(expType, varType))
+			throw new SemanticException(lineNumber, "type mismatch in assignment");
+
 		return null;
 	}
 
+	@Override
 	public Temp irMe()
 	{
-		Temp src = exp.irMe();
-		Ir.
-				getInstance().
-				AddIrCommand(new IrCommandStore(((AstExpVarSimple) var).name,src));
-
+		// Generate IR for RHS expression
+		Temp rhsTemp = exp.irMe();
+		
+		// Handle different LHS types
+		if (var instanceof AstExpVarSimple) {
+			// Simple assignment: x := exp
+			AstExpVarSimple simpleVar = (AstExpVarSimple) var;
+			Ir.getInstance().AddIrCommand(new IrCommandStore(simpleVar.getUniqueName(), rhsTemp));
+		}
+		else if (var instanceof AstExpVarSubscript) {
+			// Array assignment: a[i] := exp
+			// For now, simplified - would need proper array address calculation
+			Ir.getInstance().AddIrCommand(new IrCommandStore("array_element", rhsTemp));
+		}
+		else if (var instanceof AstExpVarField) {
+			// Field assignment: obj.field := exp
+			// For now, simplified - would need proper field offset calculation
+			Ir.getInstance().AddIrCommand(new IrCommandStore("field", rhsTemp));
+		}
+		
 		return null;
 	}
 }

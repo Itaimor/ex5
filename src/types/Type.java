@@ -7,13 +7,30 @@ public abstract class Type
 	/******************************/
 	public String name;
 
-	/*************/
-	/* isClass() */
-	/*************/
-	public boolean isClass(){ return false;}
+    /*  constructor */
+    protected Type(String name) 
+    {
+        this.name = name;
+    }
 
-	/*************/
-	/* isArray() */
-	/*************/
-	public boolean isArray(){ return false;}
+	/*==================================================================*/
+    /*                    TYPE CHECKS                                   */
+    /*==================================================================*/
+	public boolean isInt() { return false; }
+    public boolean isString() { return false; }
+    public boolean isClass() { return false; }
+    public boolean isArray() { return false; }
+    public boolean isFunction() { return false; }
+    public boolean isVoid() { return false; }
+    public boolean isNil() { return false; }
+
+
+
+    /*  toString */
+    @Override
+    public String toString() 
+    {
+        return name;
+    }
+	
 }

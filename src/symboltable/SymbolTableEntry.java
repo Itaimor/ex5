@@ -38,6 +38,11 @@ public class SymbolTableEntry
 	/* The prevtopIndex is just for debug purposes ... */
 	/****************************************************/
 	public int prevtopIndex;
+
+	/****************************************************/
+	/* Scope depth - at which nesting level declared    */
+	/****************************************************/
+	public int scopeDepth;
 	
 	/******************/
 	/* CONSTRUCTOR(S) */
@@ -47,6 +52,7 @@ public class SymbolTableEntry
 		Type type,
 		int index,
 		SymbolTableEntry next,
+		int scopeDepth,
 		SymbolTableEntry prevtop,
 		int prevtopIndex)
 	{
@@ -54,7 +60,16 @@ public class SymbolTableEntry
 		this.name = name;
 		this.type = type;
 		this.next = next;
+		this.scopeDepth = scopeDepth;
 		this.prevtop = prevtop;
 		this.prevtopIndex = prevtopIndex;
+	}
+	
+	/*****************************************************/
+	/* Get unique offset for this symbol (for IR names) */
+	/*****************************************************/
+	public int getOffset()
+	{
+		return prevtopIndex;
 	}
 }

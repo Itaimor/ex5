@@ -1,6 +1,7 @@
 package ast;
 
 import types.*;
+import semantic.SemanticException;
 import temp.*;
 import ir.*;
 
@@ -17,8 +18,6 @@ public class AstExpInt extends AstExp
 		/* SET A UNIQUE SERIAL NUMBER */
 		/******************************/
 		serialNumber = AstNodeSerialNumber.getFresh();
-
-		System.out.format("====================== exp -> INT( %d )\n", value);
 		this.value = value;
 	}
 
@@ -40,15 +39,22 @@ public class AstExpInt extends AstExp
 			String.format("INT(%d)",value));
 	}
 
-	public Type semantMe()
+	@Override
+	public Type semantMe() throws SemanticException
 	{
 		return TypeInt.getInstance();
 	}
 
+	@Override
+	public Integer getConstantValue() {
+		return value;
+	}
+
+	@Override
 	public Temp irMe()
 	{
 		Temp t = TempFactory.getInstance().getFreshTemp();
-		Ir.getInstance().AddIrCommand(new IRcommandConstInt(t,value));
+		Ir.getInstance().AddIrCommand(new IRcommandConstInt(t, value));
 		return t;
 	}
 }

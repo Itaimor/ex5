@@ -16,14 +16,9 @@ public abstract class IrCommand
 	/*****************/
 	/* Label Factory */
 	/*****************/
-	protected static int label_counter=0;
+	protected static int labelCounter = 0;
 	public    static String getFreshLabel(String msg)
 	{
-		return String.format("Label_%d_%s",label_counter++,msg);
+		return String.format("Label_%d_%s", labelCounter++,msg);
 	}
-
-	/***************/
-	/* MIPS me !!! */
-	/***************/
-	public abstract void mipsMe();
 }

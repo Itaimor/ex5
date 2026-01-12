@@ -11,7 +11,6 @@ package ir;
 /* PROJECT IMPORTS */
 /*******************/
 import temp.*;
-import mips.*;
 
 public class IrCommandBinopAddIntegers extends IrCommand
 {
@@ -25,11 +24,15 @@ public class IrCommandBinopAddIntegers extends IrCommand
 		this.t1 = t1;
 		this.t2 = t2;
 	}
-	/***************/
-	/* MIPS me !!! */
-	/***************/
-	public void mipsMe()
+	
+	public Temp getDst() { return dst; }
+	public Temp getT1() { return t1; }
+	public Temp getT2() { return t2; }
+	
+	@Override
+	public String toString()
 	{
-		MipsGenerator.getInstance().add(dst,t1,t2);
+		return String.format("Temp_%d := Temp_%d + Temp_%d", 
+			dst.getSerialNumber(), t1.getSerialNumber(), t2.getSerialNumber());
 	}
 }

@@ -1,14 +1,10 @@
 package ast;
 
 import types.*;
+import semantic.SemanticException;
 
 public abstract class AstStmt extends AstNode
 {
-	/***********************************************/
-	/* The default semantic action for an AST node */
-	/***********************************************/
-	public Type semantMe()
-	{
-		return null;
-	}
+	@Override
+	public abstract Type semantMe() throws SemanticException;
 }

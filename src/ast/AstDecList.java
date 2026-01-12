@@ -1,8 +1,8 @@
 package ast;
 
 import types.*;
+import semantic.SemanticException;
 import temp.*;
-import ir.*;
 
 public class AstDecList extends AstNode
 {
@@ -22,6 +22,8 @@ public class AstDecList extends AstNode
 		/******************************/
 		serialNumber = AstNodeSerialNumber.getFresh();
 
+		// if (tail != null) System.out.print("====================== decList -> dec decList\n");
+		// if (tail == null) System.out.print("====================== decList -> dec\n");
 		this.head = head;
 		this.tail = tail;
 	}
@@ -56,10 +58,11 @@ public class AstDecList extends AstNode
 		if (tail != null) AstGraphviz.getInstance().logEdge(serialNumber,tail.serialNumber);
 	}
 
-	public Type semantMe()
+	@Override
+	public Type semantMe() throws SemanticException
 	{
 		/*************************************/
-		/* RECURSIVELY PRINT HEAD + TAIL ... */
+		/* RECURSIVELY SEMANT HEAD + TAIL ... */
 		/*************************************/
 		if (head != null) head.semantMe();
 		if (tail != null) tail.semantMe();
@@ -67,11 +70,48 @@ public class AstDecList extends AstNode
 		return null;
 	}
 
+	@Override
 	public Temp irMe()
 	{
-		if (head != null) head.irMe();
-		if (tail != null) tail.irMe();
 
+		// PASS 1: Generate IR for ALL global variable initializations
+		AstDecList curr = this;
+		while (curr != null) {
+			if (curr.head instanceof AstDecVar) {
+				curr.head.irMe();
+			}
+			curr = curr.tail;
+		}
+		
+		// PASS 2: Generate IR for main function
+		curr = this;
+		while (curr != null) {
+			if (curr.head instanceof AstDecFunc) {
+				AstDecFunc func = (AstDecFunc) curr.head;
+				if (func.name.equals("main")) {
+					func.irMe();
+				}
+			}
+			curr = curr.tail;
+		}
+		
+		// PASS 3: Generate IR for other declarations (classes, other functions, typedefs)
+		curr = this;
+		while (curr != null) {
+			if (!(curr.head instanceof AstDecVar)) {
+				if (curr.head instanceof AstDecFunc) {
+					AstDecFunc func = (AstDecFunc) curr.head;
+					if (!func.name.equals("main")) {
+						curr.head.irMe();
+					}
+				} else {
+					// Classes, typedefs, etc.
+					curr.head.irMe();
+				}
+			}
+			curr = curr.tail;
+		}
+		
 		return null;
 	}
 }

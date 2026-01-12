@@ -57,10 +57,12 @@ public class AstGraphviz
 	/***********************************/
 	public void logNode(int nodeSerialNumber,String nodeName)
 	{
-		fileWriter.format(
-			"v%d [label = \"%s\"];\n",
-			nodeSerialNumber,
-			nodeName);
+		if (fileWriter != null) {
+			fileWriter.format(
+				"v%d [label = \"%s\"];\n",
+				nodeSerialNumber,
+				nodeName);
+		}
 	}
 
 	/***********************************/
@@ -70,10 +72,12 @@ public class AstGraphviz
 		int fatherNodeSerialNumber,
 		int sonNodeSerialNumber)
 	{
-		fileWriter.format(
-			"v%d -> v%d;\n",
-			fatherNodeSerialNumber,
-			sonNodeSerialNumber);
+		if (fileWriter != null) {
+			fileWriter.format(
+				"v%d -> v%d;\n",
+				fatherNodeSerialNumber,
+				sonNodeSerialNumber);
+		}
 	}
 	
 	/******************************/
@@ -81,7 +85,9 @@ public class AstGraphviz
 	/******************************/
 	public void finalizeFile()
 	{
-		fileWriter.print("}\n");
-		fileWriter.close();
+		if (fileWriter != null) {
+			fileWriter.print("}\n");
+			fileWriter.close();
+		}
 	}
 }

@@ -10,7 +10,6 @@ public class AstExpNil extends AstExp
 	public AstExpNil()
 	{
 		serialNumber = AstNodeSerialNumber.getFresh();
-		// Debug disabled: 0
 	}
 
 	public void printMe()
@@ -22,7 +21,8 @@ public class AstExpNil extends AstExp
 	@Override
 	public Type semantMe() throws SemanticException
 	{
-		return TypeNil.getInstance();
+		resolvedType = TypeNil.getInstance();
+		return resolvedType;
 	}
 
 	@Override

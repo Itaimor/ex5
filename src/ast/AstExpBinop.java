@@ -30,11 +30,6 @@ public class AstExpBinop extends AstExp
 		/******************************/
 		serialNumber = AstNodeSerialNumber.getFresh();
 
-		/***************************************/
-		/* PRINT CORRESPONDING DERIVATION RULE */
-		/***************************************/
-		// Debug disabled: 0
-
 		/*******************************/
 		/* COPY INPUT DATA MENBERS ... */
 		/*******************************/
@@ -84,40 +79,37 @@ public class AstExpBinop extends AstExp
 		
 		if (op == OP_PLUS)
 		{
-			// PDF 2.6: + works on int+int or string+string
 			if (t1.isInt() && t2.isInt())
-				return TypeInt.getInstance();
+			{ resolvedType = TypeInt.getInstance(); return resolvedType; }
 			if (t1.isString() && t2.isString())
-				return TypeString.getInstance();
+			{ resolvedType = TypeString.getInstance(); return resolvedType; }
 			throw new SemanticException(lineNumber, "'+' requires two ints or two strings");
 		}
 		else if (op == OP_MINUS || op == OP_TIMES || op == OP_DIVIDE)
 		{
-			// PDF 2.6: -, *, / only work on int
 			if (!t1.isInt() || !t2.isInt())
 				throw new SemanticException(lineNumber, "arithmetic operator requires int operands");
-			
-			// PDF 2.6: Division by constant 0 is error
 			if (op == OP_DIVIDE && right instanceof AstExpInt) {
 				int val = ((AstExpInt) right).value;
 				if (val == 0)
 					throw new SemanticException(lineNumber, "division by zero");
 			}
-			return TypeInt.getInstance();
+			resolvedType = TypeInt.getInstance();
+			return resolvedType;
 		}
 		else if (op == OP_LT || op == OP_GT)
 		{
-			// PDF 2.6: <, > only work on int
 			if (!t1.isInt() || !t2.isInt())
 				throw new SemanticException(lineNumber, "comparison operator requires int operands");
-			return TypeInt.getInstance();
+			resolvedType = TypeInt.getInstance();
+			return resolvedType;
 		}
 		else if (op == OP_EQ)
 		{
-			// PDF 2.6: = equality testing
 			if (!TypeUtils.canCompareEquality(t1, t2))
 				throw new SemanticException(lineNumber, "cannot compare these types for equality");
-			return TypeInt.getInstance();
+			resolvedType = TypeInt.getInstance();
+			return resolvedType;
 		}
 		
 		throw new SemanticException(lineNumber, "unknown binary operator");
@@ -155,32 +147,39 @@ public class AstExpBinop extends AstExp
 	@Override
 	public Temp irMe()
 	{
-		// Generate IR for left and right operands
 		Temp t1 = left.irMe();
 		Temp t2 = right.irMe();
 		Temp result = TempFactory.getInstance().getFreshTemp();
-		
+
 		switch (op) {
-			case OP_PLUS:   // 0
-				Ir.getInstance().AddIrCommand(new IrCommandBinopAddIntegers(result, t1, t2));
+			case OP_PLUS:
+				if (left.resolvedType != null && left.resolvedType.isString())
+					Ir.getInstance().AddIrCommand(new IrCommandStringConcat(result, t1, t2));
+				else
+					Ir.getInstance().AddIrCommand(new IrCommandBinopAddIntegers(result, t1, t2));
 				break;
-			case OP_MINUS:  // 1
+			case OP_MINUS:
 				Ir.getInstance().AddIrCommand(new IrCommandBinopSubIntegers(result, t1, t2));
 				break;
-			case OP_TIMES:  // 2
+			case OP_TIMES:
 				Ir.getInstance().AddIrCommand(new IrCommandBinopMulIntegers(result, t1, t2));
 				break;
-			case OP_DIVIDE: // 3
+			case OP_DIVIDE:
+				Ir.getInstance().AddIrCommand(
+					new IrCommandJumpIfEqToZero(t2, "label_error_div_by_zero"));
 				Ir.getInstance().AddIrCommand(new IrCommandBinopDivIntegers(result, t1, t2));
 				break;
-			case OP_LT:     // 4
+			case OP_LT:
 				Ir.getInstance().AddIrCommand(new IrCommandBinopLtIntegers(result, t1, t2));
 				break;
-			case OP_GT:     // 5
+			case OP_GT:
 				Ir.getInstance().AddIrCommand(new IrCommandBinopGtIntegers(result, t1, t2));
 				break;
-			case OP_EQ:     // 6
-				Ir.getInstance().AddIrCommand(new IrCommandBinopEqIntegers(result, t1, t2));
+			case OP_EQ:
+				if (left.resolvedType != null && left.resolvedType.isString())
+					Ir.getInstance().AddIrCommand(new IrCommandStringEq(result, t1, t2));
+				else
+					Ir.getInstance().AddIrCommand(new IrCommandBinopEqIntegers(result, t1, t2));
 				break;
 		}
 		return result;

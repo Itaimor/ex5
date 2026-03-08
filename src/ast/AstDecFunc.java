@@ -15,6 +15,8 @@ public class AstDecFunc extends AstDec
 	public String name;
 	public AstTypeNameList params;
 	public AstStmtList body;
+	public String ownerClassName = null;
+	private java.util.List<symboltable.SymbolTableEntry> paramEntries = new java.util.ArrayList<>();
 	
 	public AstDecFunc(
 		String returnTypeName,
@@ -124,6 +126,7 @@ public class AstDecFunc extends AstDec
 		{
 			t = SymbolTable.getInstance().find(it.head.type);
 			SymbolTable.getInstance().enter(it.head.name, t);
+			paramEntries.add(SymbolTable.getInstance().findEntry(it.head.name));
 		}
 
 		/*******************/
@@ -143,18 +146,30 @@ public class AstDecFunc extends AstDec
 	@Override
 	public Temp irMe()
 	{
-		// Emit function entry label
-		String funcLabel = IrCommand.getFreshLabel("func_" + name);
+		String funcLabel;
+		if (ownerClassName != null)
+			funcLabel = ownerClassName + "_" + name;
+		else if (name.equals("main"))
+			funcLabel = "user_main";
+		else
+			funcLabel = "func_" + name;
+
 		Ir.getInstance().AddIrCommand(new IrCommandLabel(funcLabel));
-		
-		// Generate IR for function body
-		if (body != null) {
-			body.irMe();
+
+		int paramIdx = 0;
+		for (AstTypeNameList it = params; it != null; it = it.tail, paramIdx++)
+		{
+			Temp paramTemp = TempFactory.getInstance().getFreshTemp();
+			Ir.getInstance().AddIrCommand(new IrCommandLoadParam(paramTemp, paramIdx));
+			String uniqueName = it.head.name + "_" + paramEntries.get(paramIdx).getOffset();
+			Ir.getInstance().AddIrCommand(new IrCommandStore(uniqueName, paramTemp));
 		}
-		
-		// Implicit return for void functions (if no explicit return at end)
-		// For now, we'll let the function end naturally
-		
+
+		if (body != null)
+			body.irMe();
+
+		Ir.getInstance().AddIrCommand(new IrCommandReturn(null));
+
 		return null;
 	}
 }

@@ -42,7 +42,8 @@ public class AstExpInt extends AstExp
 	@Override
 	public Type semantMe() throws SemanticException
 	{
-		return TypeInt.getInstance();
+		resolvedType = TypeInt.getInstance();
+		return resolvedType;
 	}
 
 	@Override

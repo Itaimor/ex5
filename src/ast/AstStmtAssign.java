@@ -76,26 +76,31 @@ public class AstStmtAssign extends AstStmt
 	@Override
 	public Temp irMe()
 	{
-		// Generate IR for RHS expression
-		Temp rhsTemp = exp.irMe();
-		
-		// Handle different LHS types
 		if (var instanceof AstExpVarSimple) {
-			// Simple assignment: x := exp
-			AstExpVarSimple simpleVar = (AstExpVarSimple) var;
-			Ir.getInstance().AddIrCommand(new IrCommandStore(simpleVar.getUniqueName(), rhsTemp));
+			AstExpVarSimple sv = (AstExpVarSimple) var;
+			Temp rhsTemp = exp.irMe();
+			Ir.getInstance().AddIrCommand(new IrCommandStore(sv.getUniqueName(), rhsTemp));
 		}
 		else if (var instanceof AstExpVarSubscript) {
-			// Array assignment: a[i] := exp
-			// For now, simplified - would need proper array address calculation
-			Ir.getInstance().AddIrCommand(new IrCommandStore("array_element", rhsTemp));
+			AstExpVarSubscript sub = (AstExpVarSubscript) var;
+			Temp baseTemp  = sub.var.irMe();
+			Temp indexTemp = sub.subscript.irMe();
+			Temp rhsTemp   = exp.irMe();
+			Ir.getInstance().AddIrCommand(
+				new IrCommandJumpIfEqToZero(baseTemp, "label_error_null_deref"));
+			AstExpVarSubscript.emitBoundsCheck(baseTemp, indexTemp);
+			Ir.getInstance().AddIrCommand(new IrCommandStoreArray(baseTemp, indexTemp, rhsTemp));
 		}
 		else if (var instanceof AstExpVarField) {
-			// Field assignment: obj.field := exp
-			// For now, simplified - would need proper field offset calculation
-			Ir.getInstance().AddIrCommand(new IrCommandStore("field", rhsTemp));
+			AstExpVarField fld = (AstExpVarField) var;
+			Temp baseTemp = fld.var.irMe();
+			Temp rhsTemp  = exp.irMe();
+			Ir.getInstance().AddIrCommand(
+				new IrCommandJumpIfEqToZero(baseTemp, "label_error_null_deref"));
+			int offset = ClassLayout.getInstance().getFieldOffset(
+				fld.var.resolvedType.name, fld.fieldName);
+			Ir.getInstance().AddIrCommand(new IrCommandStoreField(baseTemp, offset, rhsTemp));
 		}
-		
 		return null;
 	}
 }

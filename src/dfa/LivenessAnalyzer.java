@@ -45,28 +45,31 @@ public class LivenessAnalyzer {
             Set<Temp> def = new HashSet<>();
             Set<IrCommand> succs = new HashSet<>();
 
-            // Calculate def/use
-            if (cmd instanceof IrCommandBinopAddIntegers ||
-                    cmd instanceof IrCommandBinopSubIntegers ||
-                    cmd instanceof IrCommandBinopMulIntegers ||
-                    cmd instanceof IrCommandBinopDivIntegers ||
-                    cmd instanceof IrCommandBinopEqIntegers ||
-                    cmd instanceof IrCommandBinopGtIntegers ||
-                    cmd instanceof IrCommandBinopLtIntegers) {
-                try {
-                    use.add((Temp) cmd.getClass().getMethod("getT1").invoke(cmd));
-                    use.add((Temp) cmd.getClass().getMethod("getT2").invoke(cmd));
-                    def.add((Temp) cmd.getClass().getMethod("getDst").invoke(cmd));
-                } catch (Exception e) {
-                    // Fallback to field access if methods are missing
-                    try {
-                        use.add((Temp) cmd.getClass().getField("t1").get(cmd));
-                        use.add((Temp) cmd.getClass().getField("t2").get(cmd));
-                        def.add((Temp) cmd.getClass().getField("dst").get(cmd));
-                    } catch (Exception e2) {
-                    }
-                }
-            } else if (cmd instanceof IRcommandConstInt) {
+            // === Binops (T6a: replaced reflection with direct instanceof) ===
+            if (cmd instanceof IrCommandBinopAddIntegers) {
+                IrCommandBinopAddIntegers c = (IrCommandBinopAddIntegers) cmd;
+                use.add(c.getT1()); use.add(c.getT2()); def.add(c.getDst());
+            } else if (cmd instanceof IrCommandBinopSubIntegers) {
+                IrCommandBinopSubIntegers c = (IrCommandBinopSubIntegers) cmd;
+                use.add(c.getT1()); use.add(c.getT2()); def.add(c.getDst());
+            } else if (cmd instanceof IrCommandBinopMulIntegers) {
+                IrCommandBinopMulIntegers c = (IrCommandBinopMulIntegers) cmd;
+                use.add(c.getT1()); use.add(c.getT2()); def.add(c.getDst());
+            } else if (cmd instanceof IrCommandBinopDivIntegers) {
+                IrCommandBinopDivIntegers c = (IrCommandBinopDivIntegers) cmd;
+                use.add(c.getT1()); use.add(c.getT2()); def.add(c.getDst());
+            } else if (cmd instanceof IrCommandBinopEqIntegers) {
+                IrCommandBinopEqIntegers c = (IrCommandBinopEqIntegers) cmd;
+                use.add(c.getT1()); use.add(c.getT2()); def.add(c.getDst());
+            } else if (cmd instanceof IrCommandBinopLtIntegers) {
+                IrCommandBinopLtIntegers c = (IrCommandBinopLtIntegers) cmd;
+                use.add(c.getT1()); use.add(c.getT2()); def.add(c.getDst());
+            } else if (cmd instanceof IrCommandBinopGtIntegers) {
+                IrCommandBinopGtIntegers c = (IrCommandBinopGtIntegers) cmd;
+                use.add(c.getT1()); use.add(c.getT2()); def.add(c.getDst());
+            }
+            // === Original EX4 commands ===
+            else if (cmd instanceof IRcommandConstInt) {
                 def.add(((IRcommandConstInt) cmd).getDst());
             } else if (cmd instanceof IrCommandLoad) {
                 def.add(((IrCommandLoad) cmd).getDst());
@@ -76,14 +79,49 @@ public class LivenessAnalyzer {
                 use.add(((IrCommandPrintInt) cmd).getTemp());
             } else if (cmd instanceof IrCommandReturn) {
                 Temp ret = ((IrCommandReturn) cmd).getReturnValue();
-                if (ret != null)
-                    use.add(ret);
+                if (ret != null) use.add(ret);
             } else if (cmd instanceof IrCommandJumpIfEqToZero) {
                 use.add(((IrCommandJumpIfEqToZero) cmd).getTemp());
                 String label = ((IrCommandJumpIfEqToZero) cmd).getLabelName();
-                if (labelToCommand.containsKey(label)) {
+                if (labelToCommand.containsKey(label))
                     succs.add(labelToCommand.get(label));
-                }
+            }
+            // === 12 new EX5 commands (T6b) ===
+            else if (cmd instanceof IrCommandMalloc) {
+                IrCommandMalloc c = (IrCommandMalloc) cmd;
+                def.add(c.getDst()); use.add(c.getSize());
+            } else if (cmd instanceof IrCommandLoadField) {
+                IrCommandLoadField c = (IrCommandLoadField) cmd;
+                def.add(c.getDst()); use.add(c.getBase());
+            } else if (cmd instanceof IrCommandStoreField) {
+                IrCommandStoreField c = (IrCommandStoreField) cmd;
+                use.add(c.getBase()); use.add(c.getSrc());
+            } else if (cmd instanceof IrCommandLoadArray) {
+                IrCommandLoadArray c = (IrCommandLoadArray) cmd;
+                def.add(c.getDst()); use.add(c.getBase()); use.add(c.getIndex());
+            } else if (cmd instanceof IrCommandStoreArray) {
+                IrCommandStoreArray c = (IrCommandStoreArray) cmd;
+                use.add(c.getBase()); use.add(c.getIndex()); use.add(c.getSrc());
+            } else if (cmd instanceof IrCommandLoadAddress) {
+                def.add(((IrCommandLoadAddress) cmd).getDst());
+            } else if (cmd instanceof IrCommandCall) {
+                IrCommandCall c = (IrCommandCall) cmd;
+                if (c.getDst() != null) def.add(c.getDst());
+                use.addAll(c.getArgs());
+            } else if (cmd instanceof IrCommandVirtualCall) {
+                IrCommandVirtualCall c = (IrCommandVirtualCall) cmd;
+                if (c.getDst() != null) def.add(c.getDst());
+                use.add(c.getBaseObj()); use.addAll(c.getArgs());
+            } else if (cmd instanceof IrCommandLoadParam) {
+                def.add(((IrCommandLoadParam) cmd).getDst());
+            } else if (cmd instanceof IrCommandPrintString) {
+                use.add(((IrCommandPrintString) cmd).getStrAddr());
+            } else if (cmd instanceof IrCommandStringConcat) {
+                IrCommandStringConcat c = (IrCommandStringConcat) cmd;
+                def.add(c.getDst()); use.add(c.getStr1()); use.add(c.getStr2());
+            } else if (cmd instanceof IrCommandStringEq) {
+                IrCommandStringEq c = (IrCommandStringEq) cmd;
+                def.add(c.getDst()); use.add(c.getStr1()); use.add(c.getStr2());
             }
 
             // Calculate successors (default: next instruction)

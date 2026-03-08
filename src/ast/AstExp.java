@@ -5,6 +5,8 @@ import semantic.SemanticException;
 
 public abstract class AstExp extends AstNode
 {
+	public Type resolvedType;
+
 	@Override
 	public abstract Type semantMe() throws SemanticException;
 

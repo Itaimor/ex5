@@ -42,21 +42,22 @@ public class AstExpVarField extends AstExpVar
 		if (member == null)
 			throw new SemanticException(lineNumber, "field '" + fieldName + "' not found in class");
 
-		return member.t;
+		resolvedType = member.t;
+		return resolvedType;
 	}
 
 	@Override
 	public Temp irMe()
 	{
-		// Generate IR for base variable
-		//Temp baseTemp = var.irMe();
-		
-		// Calculate field offset from class type
-		// For now, we'll use a simplified approach - load field symbolically
+		Temp baseTemp = var.irMe();
+
+		Ir.getInstance().AddIrCommand(
+			new IrCommandJumpIfEqToZero(baseTemp, "label_error_null_deref"));
+
+		int offset = ClassLayout.getInstance().getFieldOffset(
+			var.resolvedType.name, fieldName);
 		Temp result = TempFactory.getInstance().getFreshTemp();
-		String fieldAccess = String.format("field_%s", fieldName);
-		Ir.getInstance().AddIrCommand(new IrCommandLoad(result, fieldAccess));
-		
+		Ir.getInstance().AddIrCommand(new IrCommandLoadField(result, baseTemp, offset));
 		return result;
 	}
 }

@@ -5,6 +5,8 @@ import semantic.SemanticException;
 import symboltable.SymbolTable;
 import temp.*;
 import ir.*;
+import java.util.ArrayList;
+import java.util.List;
 
 public class AstExpCall extends AstExp
 {
@@ -53,11 +55,21 @@ public class AstExpCall extends AstExp
 			
 			TypeClass classType = (TypeClass) varType;
 			TypeClassVarDec member = classType.findMemberInHierarchy(funcName);
-			if (member == null)
-				throw new SemanticException(lineNumber, "method '" + funcName + "' not found in class");
-			if (!(member.t instanceof TypeFunction))
-				throw new SemanticException(lineNumber, "'" + funcName + "' is not a method");
-			funcType = (TypeFunction) member.t;
+			if (member != null) {
+				if (!(member.t instanceof TypeFunction))
+					throw new SemanticException(lineNumber, "'" + funcName + "' is not a method");
+				funcType = (TypeFunction) member.t;
+			} else {
+				SymbolTable st = SymbolTable.getInstance();
+				TypeClass curClass = st.getCurClass();
+				TypeFunction curFunc = st.getCurrFunc();
+				if (curClass != null && classType == curClass
+						&& curFunc != null && funcName.equals(curFunc.name)) {
+					funcType = curFunc;
+				} else {
+					throw new SemanticException(lineNumber, "method '" + funcName + "' not found in class");
+				}
+			}
 		}
 
 		// Check argument count and types
@@ -79,32 +91,52 @@ public class AstExpCall extends AstExp
 		if (expectedParams != null || actualArgs != null)
 			throw new SemanticException(lineNumber, "wrong number of arguments in call to '" + funcName + "'");
 
-		return funcType.returnType;
+		resolvedType = funcType.returnType;
+		return resolvedType;
 	}
 
 	@Override
 	public Temp irMe()
 	{
-		// Handle PrintInt specially (library function)
-		if (funcName.equals("PrintInt")) {
-			// Get the first argument temp
+		if (funcName.equals("PrintInt") && var == null) {
 			if (args != null) {
 				Temp argTemp = args.head.irMe();
 				Ir.getInstance().AddIrCommand(new IrCommandPrintInt(argTemp));
 			}
-			return null;  // PrintInt returns void
+			return null;
 		}
 
-		// Generate IR for all arguments first
-		AstExpList currArg = args;
-		while (currArg != null) {
-			currArg.head.irMe();
-			currArg = currArg.tail;
+		if (funcName.equals("PrintString") && var == null) {
+			if (args != null) {
+				Temp argTemp = args.head.irMe();
+				Ir.getInstance().AddIrCommand(new IrCommandPrintString(argTemp));
+			}
+			return null;
 		}
-		
-		// For other functions, we would emit a call instruction
-		// For now, return a fresh temp for non-void functions
-		Temp result = TempFactory.getInstance().getFreshTemp();
-		return result;
+
+		if (var == null) {
+			List<Temp> argTemps = new ArrayList<>();
+			for (AstExpList cur = args; cur != null; cur = cur.tail)
+				argTemps.add(cur.head.irMe());
+			String funcLabel = "func_" + funcName;
+			Temp dst = (resolvedType != null && !resolvedType.isVoid())
+				? TempFactory.getInstance().getFreshTemp() : null;
+			Ir.getInstance().AddIrCommand(new IrCommandCall(dst, funcLabel, argTemps));
+			return dst;
+		} else {
+			Temp baseTemp = var.irMe();
+			Ir.getInstance().AddIrCommand(
+				new IrCommandJumpIfEqToZero(baseTemp, "label_error_null_deref"));
+			List<Temp> argTemps = new ArrayList<>();
+			for (AstExpList cur = args; cur != null; cur = cur.tail)
+				argTemps.add(cur.head.irMe());
+			int methodIdx = ClassLayout.getInstance().getMethodIndex(
+				var.resolvedType.name, funcName);
+			Temp dst = (resolvedType != null && !resolvedType.isVoid())
+				? TempFactory.getInstance().getFreshTemp() : null;
+			Ir.getInstance().AddIrCommand(
+				new IrCommandVirtualCall(dst, baseTemp, methodIdx, argTemps));
+			return dst;
+		}
 	}
 }

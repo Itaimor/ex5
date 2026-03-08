@@ -2,6 +2,7 @@ package dfa;
 
 import cfg.*;
 import ir.*;
+import temp.*;
 import java.util.*;
 
 /**
@@ -180,12 +181,63 @@ public class DfaEngine {
         if (cmd instanceof IrCommandPrintInt) {
             return Collections.singleton("Temp_" + ((IrCommandPrintInt) cmd).getTemp().getSerialNumber());
         }
-        // Return: reads the temporary return value
         if (cmd instanceof IrCommandReturn) {
             IrCommandReturn c = (IrCommandReturn) cmd;
-            if (c.getReturnValue() != null) {
+            if (c.getReturnValue() != null)
                 return Collections.singleton("Temp_" + c.getReturnValue().getSerialNumber());
-            }
+        }
+        if (cmd instanceof IrCommandMalloc) {
+            return Collections.singleton("Temp_" + ((IrCommandMalloc) cmd).getSize().getSerialNumber());
+        }
+        if (cmd instanceof IrCommandLoadField) {
+            return Collections.singleton("Temp_" + ((IrCommandLoadField) cmd).getBase().getSerialNumber());
+        }
+        if (cmd instanceof IrCommandStoreField) {
+            IrCommandStoreField c = (IrCommandStoreField) cmd;
+            return new HashSet<>(Arrays.asList(
+                "Temp_" + c.getBase().getSerialNumber(),
+                "Temp_" + c.getSrc().getSerialNumber()));
+        }
+        if (cmd instanceof IrCommandLoadArray) {
+            IrCommandLoadArray c = (IrCommandLoadArray) cmd;
+            return new HashSet<>(Arrays.asList(
+                "Temp_" + c.getBase().getSerialNumber(),
+                "Temp_" + c.getIndex().getSerialNumber()));
+        }
+        if (cmd instanceof IrCommandStoreArray) {
+            IrCommandStoreArray c = (IrCommandStoreArray) cmd;
+            return new HashSet<>(Arrays.asList(
+                "Temp_" + c.getBase().getSerialNumber(),
+                "Temp_" + c.getIndex().getSerialNumber(),
+                "Temp_" + c.getSrc().getSerialNumber()));
+        }
+        if (cmd instanceof IrCommandCall) {
+            IrCommandCall c = (IrCommandCall) cmd;
+            Set<String> uses = new HashSet<>();
+            for (Temp a : c.getArgs()) uses.add("Temp_" + a.getSerialNumber());
+            return uses;
+        }
+        if (cmd instanceof IrCommandVirtualCall) {
+            IrCommandVirtualCall c = (IrCommandVirtualCall) cmd;
+            Set<String> uses = new HashSet<>();
+            uses.add("Temp_" + c.getBaseObj().getSerialNumber());
+            for (Temp a : c.getArgs()) uses.add("Temp_" + a.getSerialNumber());
+            return uses;
+        }
+        if (cmd instanceof IrCommandPrintString) {
+            return Collections.singleton("Temp_" + ((IrCommandPrintString) cmd).getStrAddr().getSerialNumber());
+        }
+        if (cmd instanceof IrCommandStringConcat) {
+            IrCommandStringConcat c = (IrCommandStringConcat) cmd;
+            return new HashSet<>(Arrays.asList(
+                "Temp_" + c.getStr1().getSerialNumber(),
+                "Temp_" + c.getStr2().getSerialNumber()));
+        }
+        if (cmd instanceof IrCommandStringEq) {
+            IrCommandStringEq c = (IrCommandStringEq) cmd;
+            return new HashSet<>(Arrays.asList(
+                "Temp_" + c.getStr1().getSerialNumber(),
+                "Temp_" + c.getStr2().getSerialNumber()));
         }
         return Collections.emptySet();
     }
@@ -228,9 +280,36 @@ public class DfaEngine {
         if (cmd instanceof IrCommandBinopGtIntegers) {
             return Collections.singleton("Temp_" + ((IrCommandBinopGtIntegers) cmd).getDst().getSerialNumber());
         }
-        // Allocate: defines a new named variable (allocated on stack/heap)
-        if (cmd instanceof IrCommandAllocate) {
-            return Collections.singleton(((IrCommandAllocate) cmd).getVarName());
+        if (cmd instanceof IrCommandMalloc) {
+            return Collections.singleton("Temp_" + ((IrCommandMalloc) cmd).getDst().getSerialNumber());
+        }
+        if (cmd instanceof IrCommandLoadField) {
+            return Collections.singleton("Temp_" + ((IrCommandLoadField) cmd).getDst().getSerialNumber());
+        }
+        if (cmd instanceof IrCommandLoadArray) {
+            return Collections.singleton("Temp_" + ((IrCommandLoadArray) cmd).getDst().getSerialNumber());
+        }
+        if (cmd instanceof IrCommandLoadAddress) {
+            return Collections.singleton("Temp_" + ((IrCommandLoadAddress) cmd).getDst().getSerialNumber());
+        }
+        if (cmd instanceof IrCommandLoadParam) {
+            return Collections.singleton("Temp_" + ((IrCommandLoadParam) cmd).getDst().getSerialNumber());
+        }
+        if (cmd instanceof IrCommandCall) {
+            IrCommandCall c = (IrCommandCall) cmd;
+            if (c.getDst() != null)
+                return Collections.singleton("Temp_" + c.getDst().getSerialNumber());
+        }
+        if (cmd instanceof IrCommandVirtualCall) {
+            IrCommandVirtualCall c = (IrCommandVirtualCall) cmd;
+            if (c.getDst() != null)
+                return Collections.singleton("Temp_" + c.getDst().getSerialNumber());
+        }
+        if (cmd instanceof IrCommandStringConcat) {
+            return Collections.singleton("Temp_" + ((IrCommandStringConcat) cmd).getDst().getSerialNumber());
+        }
+        if (cmd instanceof IrCommandStringEq) {
+            return Collections.singleton("Temp_" + ((IrCommandStringEq) cmd).getDst().getSerialNumber());
         }
         return Collections.emptySet();
     }

@@ -33,17 +33,39 @@ public class AstExpNewClass extends AstExp
 		if (!t.isClass())
 			throw new SemanticException(lineNumber, "'" + className + "' is not a class type");
 
-		return t;
+		resolvedType = t;
+		return resolvedType;
 	}
 
 	@Override
 	public Temp irMe()
 	{
-		// Allocate object (simplified)
-		Temp objectAddr = TempFactory.getInstance().getFreshTemp();
-		Ir.getInstance().AddIrCommand(new IrCommandAllocate(String.format("object_%s", className)));
-		
-		return objectAddr;
+		int objSize = ClassLayout.getInstance().getObjectSize(className);
+
+		Temp sizeTemp = TempFactory.getInstance().getFreshTemp();
+		Ir.getInstance().AddIrCommand(new IRcommandConstInt(sizeTemp, objSize));
+		Temp addrTemp = TempFactory.getInstance().getFreshTemp();
+		Ir.getInstance().AddIrCommand(new IrCommandMalloc(addrTemp, sizeTemp));
+
+		Temp vtableAddr = TempFactory.getInstance().getFreshTemp();
+		Ir.getInstance().AddIrCommand(new IrCommandLoadAddress(vtableAddr,
+			ClassLayout.getInstance().getVtableLabel(className)));
+		Ir.getInstance().AddIrCommand(new IrCommandStoreField(addrTemp, 0, vtableAddr));
+
+		for (ClassLayout.FieldInit init : ClassLayout.getInstance().getFieldInits(className))
+		{
+			Temp initTemp = TempFactory.getInstance().getFreshTemp();
+			if (init.kind == ClassLayout.INIT_INT)
+				Ir.getInstance().AddIrCommand(new IRcommandConstInt(initTemp, init.intValue));
+			else if (init.kind == ClassLayout.INIT_STRING)
+				Ir.getInstance().AddIrCommand(new IrCommandLoadAddress(initTemp,
+					StringRegistry.getInstance().getOrRegister(init.stringValue)));
+			else if (init.kind == ClassLayout.INIT_NIL)
+				Ir.getInstance().AddIrCommand(new IRcommandConstInt(initTemp, 0));
+			Ir.getInstance().AddIrCommand(new IrCommandStoreField(addrTemp, init.offset, initTemp));
+		}
+
+		return addrTemp;
 	}
 }
 

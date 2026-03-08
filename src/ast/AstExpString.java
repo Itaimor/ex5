@@ -42,18 +42,16 @@ public class AstExpString extends AstExp
 	@Override
 	public Type semantMe() throws SemanticException
 	{
-		return TypeString.getInstance();
+		resolvedType = TypeString.getInstance();
+		return resolvedType;
 	}
 
 	@Override
 	public Temp irMe()
 	{
-		// For now, strings are represented as constants in IR
-		// In a real compiler, we'd load a string constant address
+		String label = StringRegistry.getInstance().getOrRegister(value);
 		Temp t = TempFactory.getInstance().getFreshTemp();
-		// Store string value symbolically - for dataflow analysis this doesn't matter
-		// as we only analyze int variables in EX4
-		Ir.getInstance().AddIrCommand(new IrCommandLoad(t, "STRING_" + value.hashCode()));
+		Ir.getInstance().AddIrCommand(new IrCommandLoadAddress(t, label));
 		return t;
 	}
 }

@@ -78,6 +78,19 @@ public class AstStmtAssign extends AstStmt
 	{
 		if (var instanceof AstExpVarSimple) {
 			AstExpVarSimple sv = (AstExpVarSimple) var;
+			if (AstDecFunc.currentMethodOwner != null)
+			{
+				int fieldOffset = ClassLayout.getInstance().getFieldOffset(
+					AstDecFunc.currentMethodOwner, sv.name);
+				if (fieldOffset >= 0)
+				{
+					Temp thisTemp = TempFactory.getInstance().getFreshTemp();
+					Ir.getInstance().AddIrCommand(new IrCommandLoad(thisTemp, "__this"));
+					Temp rhsTemp = exp.irMe();
+					Ir.getInstance().AddIrCommand(new IrCommandStoreField(thisTemp, fieldOffset, rhsTemp));
+					return null;
+				}
+			}
 			Temp rhsTemp = exp.irMe();
 			Ir.getInstance().AddIrCommand(new IrCommandStore(sv.getUniqueName(), rhsTemp));
 		}

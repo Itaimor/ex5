@@ -61,26 +61,43 @@ public class AstExpVarSubscript extends AstExpVar
 		if (constVal != null && constVal < 0)
 			throw new SemanticException(subscript.lineNumber, "array subscript cannot be negative constant");
 
-		// Return element type of array
 		TypeArray arrType = (TypeArray) varType;
-		return arrType.elementType;
+		resolvedType = arrType.elementType;
+		return resolvedType;
 	}
 
 	@Override
 	public Temp irMe()
 	{
-		// Generate IR for array base
-		//Temp baseTemp = var.irMe();
-		
-		// Generate IR for subscript expression
-		//Temp indexTemp = subscript.irMe();
-		
-		// For now, use simplified array access
-		// In full implementation, would calculate address: base + index * elementSize
+		Temp baseTemp = var.irMe();
+		Temp indexTemp = subscript.irMe();
+
+		Ir.getInstance().AddIrCommand(
+			new IrCommandJumpIfEqToZero(baseTemp, "label_error_null_deref"));
+
+		emitBoundsCheck(baseTemp, indexTemp);
+
 		Temp result = TempFactory.getInstance().getFreshTemp();
-		String arrayAccess = String.format("array_element");
-		Ir.getInstance().AddIrCommand(new IrCommandLoad(result, arrayAccess));
-		
+		Ir.getInstance().AddIrCommand(new IrCommandLoadArray(result, baseTemp, indexTemp));
 		return result;
+	}
+
+	public static void emitBoundsCheck(Temp baseTemp, Temp indexTemp)
+	{
+		Temp zeroTemp = TempFactory.getInstance().getFreshTemp();
+		Ir.getInstance().AddIrCommand(new IRcommandConstInt(zeroTemp, 0));
+		Temp isNeg = TempFactory.getInstance().getFreshTemp();
+		Ir.getInstance().AddIrCommand(new IrCommandBinopLtIntegers(isNeg, indexTemp, zeroTemp));
+		String skipNeg = IrCommand.getFreshLabel("bounds_ok_neg");
+		Ir.getInstance().AddIrCommand(new IrCommandJumpIfEqToZero(isNeg, skipNeg));
+		Ir.getInstance().AddIrCommand(new IrCommandJumpLabel("label_error_access_violation"));
+		Ir.getInstance().AddIrCommand(new IrCommandLabel(skipNeg));
+
+		Temp lengthTemp = TempFactory.getInstance().getFreshTemp();
+		Ir.getInstance().AddIrCommand(new IrCommandLoadField(lengthTemp, baseTemp, 0));
+		Temp inBounds = TempFactory.getInstance().getFreshTemp();
+		Ir.getInstance().AddIrCommand(new IrCommandBinopLtIntegers(inBounds, indexTemp, lengthTemp));
+		Ir.getInstance().AddIrCommand(
+			new IrCommandJumpIfEqToZero(inBounds, "label_error_access_violation"));
 	}
 }

@@ -2,7 +2,9 @@ package ast;
 
 import types.*;
 import semantic.SemanticException;
+import symboltable.SymbolTable;
 import temp.*;
+import ir.ClassLayout;
 
 public class AstDecList extends AstNode
 {
@@ -21,9 +23,6 @@ public class AstDecList extends AstNode
 		/* SET A UNIQUE SERIAL NUMBER */
 		/******************************/
 		serialNumber = AstNodeSerialNumber.getFresh();
-
-		// if (tail != null) System.out.print("====================== decList -> dec decList\n");
-		// if (tail == null) System.out.print("====================== decList -> dec\n");
 		this.head = head;
 		this.tail = tail;
 	}
@@ -73,9 +72,42 @@ public class AstDecList extends AstNode
 	@Override
 	public Temp irMe()
 	{
+		// PASS 0: Build class layouts + set ownerClassName on methods
+		AstDecList curr = this;
+		while (curr != null) {
+			if (curr.head instanceof AstDecClass) {
+				AstDecClass decClass = (AstDecClass) curr.head;
+				Type t = SymbolTable.getInstance().find(decClass.name);
+				if (t != null && t instanceof TypeClass) {
+					ClassLayout.getInstance().addClass((TypeClass) t);
+					for (AstCFieldList cl = decClass.dataMembers; cl != null; cl = cl.tail) {
+						if (cl.head instanceof AstCFieldVar) {
+							AstDecVar varDec = ((AstCFieldVar) cl.head).varDec;
+							if (varDec.initialValue != null) {
+								int offset = ClassLayout.getInstance().getFieldOffset(decClass.name, varDec.name);
+								if (offset > 0) {
+									if (varDec.initialValue instanceof AstExpInt)
+										ClassLayout.getInstance().addFieldInit(decClass.name, offset,
+											ClassLayout.INIT_INT, ((AstExpInt) varDec.initialValue).value, null);
+									else if (varDec.initialValue instanceof AstExpString)
+										ClassLayout.getInstance().addFieldInit(decClass.name, offset,
+											ClassLayout.INIT_STRING, 0, ((AstExpString) varDec.initialValue).value);
+									else if (varDec.initialValue instanceof AstExpNil)
+										ClassLayout.getInstance().addFieldInit(decClass.name, offset,
+											ClassLayout.INIT_NIL, 0, null);
+								}
+							}
+						}
+						if (cl.head instanceof AstCFieldFunc)
+							((AstCFieldFunc) cl.head).funcDec.ownerClassName = decClass.name;
+					}
+				}
+			}
+			curr = curr.tail;
+		}
 
 		// PASS 1: Generate IR for ALL global variable initializations
-		AstDecList curr = this;
+		curr = this;
 		while (curr != null) {
 			if (curr.head instanceof AstDecVar) {
 				curr.head.irMe();

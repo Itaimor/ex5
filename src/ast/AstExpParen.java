@@ -25,8 +25,8 @@ public class AstExpParen extends AstExp
 	@Override
 	public Type semantMe() throws SemanticException
 	{
-		// Just return the type of the inner expression
-		return exp.semantMe();
+		resolvedType = exp.semantMe();
+		return resolvedType;
 	}
 
 	@Override

@@ -126,6 +126,10 @@ public class SymbolTable
 	
 	public boolean insideFunction() { return currFunc != null; }
 
+	public TypeClass getCurClass() { return curClass; }
+	
+	public TypeFunction getCurrFunc() { return currFunc; }
+
 	public static int n=0;
 	
 	public void printMe()

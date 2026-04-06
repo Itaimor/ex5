@@ -49,21 +49,30 @@ public class AstExpNewArray extends AstExp
 		if (constVal != null && constVal <= 0)
 			throw new SemanticException(size.lineNumber, "array size must be positive");
 
-		// Return anonymous array type (no name)
-		return new TypeArray(elementType);
+		resolvedType = new TypeArray(elementType);
+		return resolvedType;
 	}
 
 	@Override
 	public Temp irMe()
 	{
-		// Generate IR for size expression
-		//Temp sizeTemp = size.irMe();
-		
-		// Allocate array (simplified - allocate returns array address)
-		Temp arrayAddr = TempFactory.getInstance().getFreshTemp();
-		Ir.getInstance().AddIrCommand(new IrCommandAllocate(String.format("array_%s", typeName)));
-		
-		return arrayAddr;
+		Temp sizeTemp = size.irMe();
+
+		Temp oneTemp = TempFactory.getInstance().getFreshTemp();
+		Ir.getInstance().AddIrCommand(new IRcommandConstInt(oneTemp, 1));
+		Temp sizePlusOne = TempFactory.getInstance().getFreshTemp();
+		Ir.getInstance().AddIrCommand(new IrCommandBinopAddIntegers(sizePlusOne, sizeTemp, oneTemp));
+		Temp fourTemp = TempFactory.getInstance().getFreshTemp();
+		Ir.getInstance().AddIrCommand(new IRcommandConstInt(fourTemp, 4));
+		Temp bytesTemp = TempFactory.getInstance().getFreshTemp();
+		Ir.getInstance().AddIrCommand(new IrCommandBinopMulIntegers(bytesTemp, sizePlusOne, fourTemp));
+
+		Temp addrTemp = TempFactory.getInstance().getFreshTemp();
+		Ir.getInstance().AddIrCommand(new IrCommandMalloc(addrTemp, bytesTemp));
+
+		Ir.getInstance().AddIrCommand(new IrCommandStoreField(addrTemp, 0, sizeTemp));
+
+		return addrTemp;
 	}
 }
 

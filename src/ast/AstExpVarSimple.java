@@ -63,10 +63,10 @@ public class AstExpVarSimple extends AstExpVar
 		if (t == null)
 			throw new SemanticException(lineNumber, "variable '" + name + "' is not declared");
 		
-		// Save entry for IR generation
 		entry = SymbolTable.getInstance().findEntry(name);
 		
-		return t;
+		resolvedType = t;
+		return resolvedType;
 	}
 
 	@Override

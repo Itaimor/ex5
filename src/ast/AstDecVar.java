@@ -18,6 +18,7 @@ public class AstDecVar extends AstDec {
 	/* Symbol table entry (saved during semantic analysis) */
 	/*****************************************************/
 	private SymbolTableEntry entry;
+	public boolean isGlobal = false;
 
 	public String getUniqueName() {
 		if (entry != null) {
@@ -93,10 +94,9 @@ public class AstDecVar extends AstDec {
 				throw new SemanticException(lineNumber, "type mismatch in variable initialization");
 		}
 
-		// 5. Enter variable into symbol table
+		isGlobal = SymbolTable.getInstance().isGlobalScope();
+
 		SymbolTable.getInstance().enter(name, t);
-		
-		// Save entry for IR generation
 		entry = SymbolTable.getInstance().findEntry(name);
 
 		return t;
@@ -105,12 +105,13 @@ public class AstDecVar extends AstDec {
 	@Override
 	public Temp irMe()
 	{
-		// Only generate IR if variable has initializer
+		if (isGlobal)
+			GlobalVarRegistry.getInstance().register(getUniqueName());
+
 		if (initialValue != null) {
 			Temp initTemp = initialValue.irMe();
 			Ir.getInstance().AddIrCommand(new IrCommandStore(getUniqueName(), initTemp));
 		}
-		// No initializer → variable stays uninitialized (important for dataflow analysis!)
 		return null;
 	}
 

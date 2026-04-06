@@ -1,9 +1,11 @@
 import java.io.*;
-import java.io.PrintWriter;
 import java_cup.runtime.Symbol;
 import ast.*;
 import ir.*;
-import mips.*;
+import dfa.LivenessAnalyzer;
+import regalloc.*;
+import mips.MipsGenerator;
+import java.util.*;
 
 public class Main
 {
@@ -20,70 +22,105 @@ public class Main
 
 		try
 		{
-			/********************************/
-			/* [1] Initialize a file reader */
-			/********************************/
 			fileReader = new FileReader(inputFileName);
-
-			/********************************/
-			/* [2] Initialize a file writer */
-			/********************************/
 			fileWriter = new PrintWriter(outputFileName);
 
-			/******************************/
-			/* [3] Initialize a new lexer */
-			/******************************/
 			l = new Lexer(fileReader);
+			p = new Parser(l, fileWriter);
 
-			/*******************************/
-			/* [4] Initialize a new parser */
-			/*******************************/
-			p = new Parser(l);
-
-			/***********************************/
-			/* [5] 3 ... 2 ... 1 ... Parse !!! */
-			/***********************************/
 			ast = (AstDecList) p.parse().value;
-
-			/*************************/
-			/* [6] Print the AST ... */
-			/*************************/
-			ast.printMe();
-
-			/**************************/
-			/* [7] Semant the AST ... */
-			/**************************/
 			ast.semantMe();
-
-			/**********************/
-			/* [8] Ir the AST ... */
-			/**********************/
 			ast.irMe();
 
-			/***********************/
-			/* [9] MIPS the Ir ... */
-			/***********************/
-			Ir.getInstance().mipsMe();
+			List<IrCommand> allIR = Ir.getInstance().getAllCommands();
 
-			/**************************************/
-			/* [10] Finalize AST GRAPHIZ DOT file */
-			/**************************************/
-			AstGraphviz.getInstance().finalizeFile();
+			List<IrCommand> initCommands = new ArrayList<>();
+			List<List<IrCommand>> functions = new ArrayList<>();
 
-			/***************************/
-			/* [11] Finalize MIPS file */
-			/***************************/
-			MipsGenerator.getInstance().finalizeFile();
+			splitIR(allIR, initCommands, functions);
 
-			/**************************/
-			/* [12] Close output file */
-			/**************************/
+			Map<Integer, String> initRegMap = new HashMap<>();
+			if (!initCommands.isEmpty())
+			{
+				initRegMap = allocateRegisters(initCommands);
+				if (initRegMap == null)
+				{
+					fileWriter.print("Register Allocation Failed");
+					fileWriter.close();
+					return;
+				}
+			}
+
+			List<Map<Integer, String>> funcRegMaps = new ArrayList<>();
+			for (List<IrCommand> func : functions)
+			{
+				Map<Integer, String> rm = allocateRegisters(func);
+				if (rm == null)
+				{
+					fileWriter.print("Register Allocation Failed");
+					fileWriter.close();
+					return;
+				}
+				funcRegMaps.add(rm);
+			}
+
+			MipsGenerator mips = new MipsGenerator(fileWriter);
+			mips.generate(
+				initCommands,
+				functions,
+				initRegMap,
+				funcRegMaps,
+				GlobalVarRegistry.getInstance().getAll()
+			);
+
 			fileWriter.close();
+			AstGraphviz.getInstance().finalizeFile();
 		}
-
 		catch (Exception e)
 		{
 			e.printStackTrace();
 		}
+	}
+
+	private static void splitIR(List<IrCommand> allIR,
+		List<IrCommand> initCommands,
+		List<List<IrCommand>> functions)
+	{
+		List<IrCommand> current = null;
+		boolean seenFirstFunc = false;
+
+		for (IrCommand cmd : allIR)
+		{
+			if (cmd instanceof IrCommandLabel)
+			{
+				String label = ((IrCommandLabel) cmd).getLabelName();
+				if (!label.startsWith("Label_"))
+				{
+					if (current != null)
+						functions.add(current);
+					current = new ArrayList<>();
+					current.add(cmd);
+					seenFirstFunc = true;
+					continue;
+				}
+			}
+
+			if (!seenFirstFunc)
+				initCommands.add(cmd);
+			else if (current != null)
+				current.add(cmd);
+		}
+
+		if (current != null)
+			functions.add(current);
+	}
+
+	private static Map<Integer, String> allocateRegisters(List<IrCommand> commands)
+	{
+		if (commands.isEmpty()) return new HashMap<>();
+
+		LivenessAnalyzer liveness = new LivenessAnalyzer(commands);
+		InterferenceGraph ig = InterferenceGraph.build(liveness, commands);
+		return RegisterAllocator.allocate(ig);
 	}
 }

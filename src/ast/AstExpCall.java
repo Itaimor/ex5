@@ -128,6 +128,7 @@ public class AstExpCall extends AstExp
 			Ir.getInstance().AddIrCommand(
 				new IrCommandJumpIfEqToZero(baseTemp, "label_error_null_deref"));
 			List<Temp> argTemps = new ArrayList<>();
+			argTemps.add(baseTemp);
 			for (AstExpList cur = args; cur != null; cur = cur.tail)
 				argTemps.add(cur.head.irMe());
 			int methodIdx = ClassLayout.getInstance().getMethodIndex(

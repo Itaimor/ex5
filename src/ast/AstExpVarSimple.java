@@ -72,6 +72,19 @@ public class AstExpVarSimple extends AstExpVar
 	@Override
 	public Temp irMe()
 	{
+		if (AstDecFunc.currentMethodOwner != null)
+		{
+			int fieldOffset = ClassLayout.getInstance().getFieldOffset(
+				AstDecFunc.currentMethodOwner, this.name);
+			if (fieldOffset >= 0)
+			{
+				Temp thisTemp = TempFactory.getInstance().getFreshTemp();
+				Ir.getInstance().AddIrCommand(new IrCommandLoad(thisTemp, "__this"));
+				Temp result = TempFactory.getInstance().getFreshTemp();
+				Ir.getInstance().AddIrCommand(new IrCommandLoadField(result, thisTemp, fieldOffset));
+				return result;
+			}
+		}
 		Temp t = TempFactory.getInstance().getFreshTemp();
 		Ir.getInstance().AddIrCommand(new IrCommandLoad(t, getUniqueName()));
 		return t;

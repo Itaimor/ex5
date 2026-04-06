@@ -115,6 +115,25 @@ public class AstExpCall extends AstExp
 		}
 
 		if (var == null) {
+			if (AstDecFunc.currentMethodOwner != null)
+			{
+				int methodIdx = ClassLayout.getInstance().getMethodIndex(
+					AstDecFunc.currentMethodOwner, funcName);
+				if (methodIdx >= 0)
+				{
+					Temp thisTemp = TempFactory.getInstance().getFreshTemp();
+					Ir.getInstance().AddIrCommand(new IrCommandLoad(thisTemp, "__this"));
+					List<Temp> argTemps = new ArrayList<>();
+					argTemps.add(thisTemp);
+					for (AstExpList cur = args; cur != null; cur = cur.tail)
+						argTemps.add(cur.head.irMe());
+					Temp dst = (resolvedType != null && !resolvedType.isVoid())
+						? TempFactory.getInstance().getFreshTemp() : null;
+					Ir.getInstance().AddIrCommand(
+						new IrCommandVirtualCall(dst, thisTemp, methodIdx, argTemps));
+					return dst;
+				}
+			}
 			List<Temp> argTemps = new ArrayList<>();
 			for (AstExpList cur = args; cur != null; cur = cur.tail)
 				argTemps.add(cur.head.irMe());

@@ -17,6 +17,8 @@ public class AstDecFunc extends AstDec
 	public AstStmtList body;
 	public String ownerClassName = null;
 	private java.util.List<symboltable.SymbolTableEntry> paramEntries = new java.util.ArrayList<>();
+
+	public static String currentMethodOwner = null;
 	
 	public AstDecFunc(
 		String returnTypeName,
@@ -157,16 +159,29 @@ public class AstDecFunc extends AstDec
 		Ir.getInstance().AddIrCommand(new IrCommandLabel(funcLabel));
 
 		int paramIdx = 0;
+		if (ownerClassName != null)
+		{
+			Temp thisTemp = TempFactory.getInstance().getFreshTemp();
+			Ir.getInstance().AddIrCommand(new IrCommandLoadParam(thisTemp, 0));
+			Ir.getInstance().AddIrCommand(new IrCommandStore("__this", thisTemp));
+			paramIdx = 1;
+		}
+
 		for (AstTypeNameList it = params; it != null; it = it.tail, paramIdx++)
 		{
 			Temp paramTemp = TempFactory.getInstance().getFreshTemp();
 			Ir.getInstance().AddIrCommand(new IrCommandLoadParam(paramTemp, paramIdx));
-			String uniqueName = it.head.name + "_" + paramEntries.get(paramIdx).getOffset();
+			String uniqueName = it.head.name + "_" + paramEntries.get(paramIdx - (ownerClassName != null ? 1 : 0)).getOffset();
 			Ir.getInstance().AddIrCommand(new IrCommandStore(uniqueName, paramTemp));
 		}
 
+		if (ownerClassName != null)
+			currentMethodOwner = ownerClassName;
+
 		if (body != null)
 			body.irMe();
+
+		currentMethodOwner = null;
 
 		Ir.getInstance().AddIrCommand(new IrCommandReturn(null));
 

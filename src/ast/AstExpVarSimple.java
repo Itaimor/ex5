@@ -16,7 +16,7 @@ public class AstExpVarSimple extends AstExpVar
 	/*****************************************************/
 	/* Symbol table entry (saved during semantic analysis) */
 	/*****************************************************/
-	private SymbolTableEntry entry;
+	public SymbolTableEntry entry;
 	
 	public String getUniqueName()
 	{
@@ -76,7 +76,7 @@ public class AstExpVarSimple extends AstExpVar
 		{
 			int fieldOffset = ClassLayout.getInstance().getFieldOffset(
 				AstDecFunc.currentMethodOwner, this.name);
-			if (fieldOffset >= 0)
+			if (fieldOffset >= 0 && (entry == null || entry.scopeDepth <= 1))
 			{
 				Temp thisTemp = TempFactory.getInstance().getFreshTemp();
 				Ir.getInstance().AddIrCommand(new IrCommandLoad(thisTemp, "__this"));

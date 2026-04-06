@@ -82,7 +82,7 @@ public class AstStmtAssign extends AstStmt
 			{
 				int fieldOffset = ClassLayout.getInstance().getFieldOffset(
 					AstDecFunc.currentMethodOwner, sv.name);
-				if (fieldOffset >= 0)
+				if (fieldOffset >= 0 && (sv.entry == null || sv.entry.scopeDepth <= 1))
 				{
 					Temp thisTemp = TempFactory.getInstance().getFreshTemp();
 					Ir.getInstance().AddIrCommand(new IrCommandLoad(thisTemp, "__this"));
